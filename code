@@ -1,0 +1,105 @@
+#include<reg52.h>
+sbit LIGHT1=P0^0;//电机正转
+sbit LIGHT2=P0^1;//电机反转
+sbit RIGHT1=P0^2;
+sbit RIGHT2=P0^3;
+
+sbit led1 = P1^4;
+sbit led2 = P1^5;
+sbit led3 = P1^6;
+sbit led4 = P1^7;
+
+sbit out1=P3^3;
+sbit out2=P3^4;
+
+unsigned char pwm_left_val = 200;//左电机占空比值 取值范围0-170，0最快
+unsigned char pwm_right_val = 0;//右电机占空比值取值范围0-170 ,0最快
+unsigned char pwm_t=0;//周期计数变量
+
+//定时器0中断
+void timer0() interrupt 1
+{
+	pwm_t++;
+	if(pwm_t == 255) //将一个周期分成256份
+		pwm_t = left_en = right_en = 0;
+	if(pwm_left_val == pwm_t)//达到pwm_left_val后开启左使能开关
+		left_en = 1;		
+	if(pwm_right_val == pwm_t)//达到pwm_left_val后开启右使能开关
+		right_en = 1;			 
+}
+
+void delay(int i)
+{
+	int j,k;
+	for(j = 0; j<i ; j++)
+	{
+		for(k = 0;k<244;k++);
+	}
+}
+
+void ADVANCE(){
+	LIGHT1=0;
+	LIGHT2=1;	
+	RIGHT1=0;
+	RIGHT2=1;
+}			
+void STOP(){
+	LIGHT1=1;
+	LIGHT2=1;	
+	RIGHT1=1;
+	RIGHT2=1;
+}
+void TURN_LIGHT(){
+	LIGHT1=0;
+	LIGHT2=1;	
+	RIGHT1=0;
+	RIGHT2=0;
+}
+void TURN_RIGHT(){
+	LIGHT1=0;
+	LIGHT2=0;	
+	RIGHT1=0;
+	RIGHT2=1;
+}
+
+void main(){
+	TMOD |= 0x02;//8位自动重装模块
+	TH0 = 220;
+	TL0 = 220;//11.0592M晶振下占空比最大比值是256,输出100HZ
+	TR0 = 1;//启动定时器0
+	ET0 = 1;//允许定时器0中断
+	EA	= 1;//总中断允许
+	while(1){
+		if(out1 == 0&&out2 == 0)
+		{
+			STOP();
+			led4 = 0;
+			delay(250);
+		}
+		else if(out1 == 1&&out2 == 1)
+		{
+			ADVANCE();
+			led1 = 0;
+			delay(5);
+			STOP();
+			delay(50);
+		}
+		else if(out1 == 1&&out2 == 0)
+		{
+			TURN_LIGHT();
+			led2 = 0;
+			delay(100);
+			STOP();
+			delay(100);
+		}
+		else if(out1 == 0&&out2 == 1)
+		{
+			TURN_RIGHT();
+			led3 = 0;
+			delay(100);
+			STOP();
+			delay(100);
+		}
+
+	}
+}
